@@ -1,0 +1,53 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-slate-950: #020617;
+  --color-neon-blue: #135bec;
+  --color-neon-cyan: #259df4;
+  --color-neon-green: #39ff14;
+}
+
+body {
+  background-color: var(--color-slate-950);
+}
+
+.glass-panel {
+  @apply bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-xl shadow-lg shadow-black/50;
+}
+
+.neon-border-blue {
+  box-shadow: 0 0 10px rgba(19, 91, 236, 0.5), inset 0 0 5px rgba(19, 91, 236, 0.2);
+  border-color: var(--color-neon-blue);
+}
+
+.neon-border-green {
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.5), inset 0 0 5px rgba(57, 255, 20, 0.2);
+  border-color: var(--color-neon-green);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5); 
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.8); 
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 1); 
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); box-shadow: 0 0 10px currentColor; }
+}
+
+.glow-pulse {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
