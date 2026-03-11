@@ -60,8 +60,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   socketId: null,
   connectSocket: () => {
     if (get().socket) return;
-    // Connect to the same origin because the server is now running on Next.js
-    const socket = io();
+    // Connect to the external backend server
+    const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || 'http://localhost:3001';
+    const socket = io(SOCKET_URL);
     set({ socket });
 
     socket.on('connect', () => {
