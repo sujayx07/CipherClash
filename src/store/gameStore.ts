@@ -149,7 +149,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   connectSocket: () => {
     if (get().socket?.connected) return;
     
-    const socket = io({
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || '';
+    const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,

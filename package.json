@@ -6,6 +6,7 @@
     "dev": "node server.js",
     "build": "next build",
     "start": "node server.js",
+    "backend": "node socket-backend.js",
     "lint": "eslint"
   },
   "dependencies": {
