@@ -3,12 +3,12 @@
 /**
  * Evaluate a guess against a secret
  * Logic: 
- * - 'totalCorrect' counts every digit that exists in the secret.
+ * - 'numbers' counts every digit that exists in the secret.
  * - 'exact' counts only those in the correct index.
- * Example: Secret 1234, Guess 5231 -> totalCorrect: 3 (1,2,3), exact: 2 (2,3) -> Returns { 3, 2 }
+ * Example: Secret 1234, Guess 5231 -> numbers: 3 (1,2,3), exact: 2 (2,3) -> Returns { 3, 2 }
  */
-export function getFeedback(guess: string, secret: string): { totalCorrect: number; exact: number } {
-  let totalCorrect = 0;
+export function getFeedback(guess: string, secret: string): { numbers: number; exact: number } {
+  let numbers = 0;
   let exact = 0;
 
   for (let i = 0; i < 4; i++) {
@@ -19,17 +19,17 @@ export function getFeedback(guess: string, secret: string): { totalCorrect: numb
     
     // 2. Check for Total Numbers Correct (regardless of position)
     if (secret.includes(guess[i])) {
-      totalCorrect++;
+      numbers++;
     }
   }
 
-  return { totalCorrect, exact };
+  return { numbers, exact };
 }
 
 /**
  * Wrapper for the evaluation logic
  */
-export function evaluateGuess(secret: string, guess: string): { totalCorrect: number; exact: number } {
+export function evaluateGuess(secret: string, guess: string): { numbers: number; exact: number } {
   return getFeedback(guess, secret);
 }
 
