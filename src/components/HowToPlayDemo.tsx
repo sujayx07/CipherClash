@@ -27,7 +27,7 @@ export default function HowToPlayDemo() {
   }, []);
 
   useEffect(() => {
-    let timeouts: NodeJS.Timeout[] = [];
+    const timeouts: NodeJS.Timeout[] = [];
 
     const runSequence = () => {
       timeouts.push(setTimeout(() => setSecretVisible(false), 1500));

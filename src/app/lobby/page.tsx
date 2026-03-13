@@ -14,11 +14,9 @@ export default function LobbyPage() {
   } = useGameStore();
 
   const [joinInput, setJoinInput] = useState('');
-  const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<'choice' | 'hosting' | 'joining'>('choice');
 
   useEffect(() => {
-    setMounted(true);
     connectSocket();
   }, [connectSocket]);
 
@@ -29,7 +27,7 @@ export default function LobbyPage() {
     }
   }, [pvpStatus, router]);
 
-  if (!mounted) return null;
+  if (typeof window === 'undefined') return null;
 
   // ─── LOCKING SECRETS ───
   if (pvpStatus === 'locking' || (roomCode && players.length === 2 && pvpStatus !== 'playing')) {

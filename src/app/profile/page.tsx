@@ -1,26 +1,73 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useGameStore } from '@/store/gameStore';
 
+interface ProfileStats {
+  rank: number;
+  elo: number;
+  winRate: number;
+  totalGames: number;
+  fastestSolve: number;
+  favoriteMode: string;
+  bestStreak: number;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { isLoggedIn, userName, guestAlias, credits } = useGameStore();
-  
+  const [stats, setStats] = useState<ProfileStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const displayName = session?.user?.name || (isLoggedIn ? userName : guestAlias);
 
-  // Mock stats
-  const stats = {
-    rank: 42,
-    elo: 1340,
-    winRate: 68,
-    totalGames: 142,
-    fastestSolve: 4,
-    favoriteMode: 'PvP',
-  };
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const response = await fetch('/api/profile', {
+          credentials: 'include',
+          headers: {
+            ...(status !== 'authenticated' ? { 'x-cc-guest-alias': guestAlias } : {}),
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('profile fetch failed');
+        }
+
+        const payload = await response.json();
+        const profile = payload.profile;
+
+        setStats({
+          rank: profile.rank || 0,
+          elo: profile.elo || 1000,
+          winRate: profile.winRate || 0,
+          totalGames: profile.gamesPlayed || 0,
+          fastestSolve: profile.fastestSolve || 999,
+          favoriteMode: (profile.favoriteMode || 'pve').toUpperCase(),
+          bestStreak: profile.bestStreak || 0,
+        });
+      } catch {
+        setStats({
+          rank: 0,
+          elo: 1000,
+          winRate: 0,
+          totalGames: 0,
+          fastestSolve: 999,
+          favoriteMode: 'PVE',
+          bestStreak: 0,
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void fetchProfile();
+  }, [guestAlias, status]);
 
   const loadout = [
     { type: 'AVATAR', name: 'DEFAULT GHOST', icon: '👻', rarity: 'COMMON' },
@@ -96,17 +143,31 @@ export default function ProfilePage() {
                 <span className="text-4xl">🏆</span>
                 <div className="flex flex-col text-right">
                   <span className="text-[10px] text-cyan-400 uppercase tracking-widest" style={{ fontFamily: 'var(--font-display)' }}>Global Rank</span>
-                  <span className="text-2xl font-black text-white" style={{ fontFamily: 'var(--font-display)' }}>#{stats.rank}</span>
+                  <span className="text-2xl font-black text-white" style={{ fontFamily: 'var(--font-display)' }}>{loading ? '...' : `#${stats?.rank || '-'}`}</span>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-6">
               {[
-                { label: 'Current ELO', value: stats.elo, color: 'var(--accent-cyan)' },
-                { label: 'Win Rate', value: `${stats.winRate}%`, color: 'var(--accent-green)' },
-                { label: 'Total Operations', value: stats.totalGames, color: 'var(--text-primary)' },
-                { label: 'Fastest Breach', value: `${stats.fastestSolve} Turns`, color: 'var(--accent-yellow)' },
+                { label: 'Current ELO', value: loading ? '...' : stats?.elo || 1000, color: 'var(--accent-cyan)' },
+                { label: 'Win Rate', value: loading ? '...' : `${stats?.winRate || 0}%`, color: 'var(--accent-green)' },
+                { label: 'Total Operations', value: loading ? '...' : stats?.totalGames || 0, color: 'var(--text-primary)' },
+                {
+                  label: 'Fastest Breach',
+                  value: loading ? '...' : (stats?.fastestSolve || 999) < 999 ? `${stats?.fastestSolve} Turns` : '-',
+                  color: 'var(--accent-yellow)',
+                },
+                {
+                  label: 'Best Streak',
+                  value: loading ? '...' : stats?.bestStreak || 0,
+                  color: 'var(--accent-cyan)',
+                },
+                {
+                  label: 'Preferred Mode',
+                  value: loading ? '...' : stats?.favoriteMode || 'PVE',
+                  color: 'var(--accent-green)',
+                },
               ].map((stat, i) => (
                 <div key={i} className="flex flex-col p-4 rounded-lg bg-slate-900/50 border border-slate-800">
                   <span className="text-xs text-slate-500 uppercase tracking-widest mb-1" style={{ fontFamily: 'var(--font-display)' }}>{stat.label}</span>
@@ -128,7 +189,7 @@ export default function ProfilePage() {
                 <div className="w-12 h-12 flex items-center justify-center text-2xl rounded-lg bg-slate-800 shrink-0">
                   {item.icon}
                 </div>
-                <div className="flex flex-col flex-grow">
+                <div className="flex flex-col grow">
                   <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded w-max" style={{ 
                     fontFamily: 'var(--font-display)', 
                     background: item.rarity === 'COMMON' ? 'rgba(160,174,192,0.1)' : item.rarity === 'RARE' ? 'rgba(0,245,255,0.1)' : 'rgba(186,85,211,0.1)',

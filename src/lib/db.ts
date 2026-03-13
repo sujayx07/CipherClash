@@ -11,6 +11,8 @@ export default pool;
 export async function initDatabase() {
   try {
     await pool.query(`
+      CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         alias TEXT NOT NULL UNIQUE,
@@ -44,4 +46,10 @@ export async function initDatabase() {
   } catch (err) {
     console.warn('[DB] Could not initialize tables (NeonDB may not be configured):', (err as Error).message);
   }
+}
+
+let initialized = false;
+if (!initialized) {
+  initialized = true;
+  void initDatabase();
 }

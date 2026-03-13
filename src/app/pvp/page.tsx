@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/store/gameStore';
 import InputKeypad from '@/components/InputKeypad';
@@ -14,25 +15,52 @@ export default function PvpPage() {
   const router = useRouter();
   const {
     sessionToken, roomCode, pvpStatus, currentTurn, myHistory,
-    opponentHistory, winner, loser, gameOverReason,
+    opponentHistory, winner, gameOverReason,
     receivedEmoji, sendEmoji, receivedChat, sendChat, makeGuess, resetPvp,
-    opponentDisconnected, gracePeriodMs, connectSocket,
+    opponentDisconnected, gracePeriodMs, connectSocket, guestAlias,
   } = useGameStore();
+  const { status } = useSession();
 
-  const [mounted, setMounted] = useState(false);
+  const resultSubmittedRef = useRef(false);
 
   useEffect(() => {
-    setMounted(true);
     connectSocket();
   }, [connectSocket]);
 
   useEffect(() => {
-    if (mounted && !roomCode && pvpStatus !== 'playing' && pvpStatus !== 'game_over') {
+    if (!roomCode && pvpStatus !== 'playing' && pvpStatus !== 'game_over') {
       router.push('/lobby');
     }
-  }, [mounted, roomCode, pvpStatus, router]);
+  }, [roomCode, pvpStatus, router]);
 
-  if (!mounted) return null;
+  useEffect(() => {
+    if (pvpStatus !== 'game_over' || !winner || resultSubmittedRef.current) return;
+
+    resultSubmittedRef.current = true;
+    void fetch('/api/leaderboard', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(status !== 'authenticated' ? { 'x-cc-guest-alias': guestAlias } : {}),
+      },
+      body: JSON.stringify({
+        mode: 'pvp',
+        result: winner === sessionToken ? 'win' : 'loss',
+        guesses_taken: Math.max(1, myHistory.length),
+      }),
+    }).catch(() => {
+      // Ignore transient network/database errors during result reporting.
+    });
+  }, [guestAlias, myHistory.length, pvpStatus, sessionToken, status, winner]);
+
+  useEffect(() => {
+    if (pvpStatus !== 'game_over') {
+      resultSubmittedRef.current = false;
+    }
+  }, [pvpStatus]);
+
+  if (typeof window === 'undefined') return null;
 
   const isMyTurn = currentTurn === sessionToken;
   const isWinner = winner === sessionToken;
@@ -153,7 +181,7 @@ export default function PvpPage() {
           <div className="w-full lg:w-[24%] flex flex-col gap-3">
             <div className="glass-panel p-4 relative overflow-hidden flex-1">
               <div
-                className="absolute top-0 left-0 w-full h-[2px]"
+                className="absolute top-0 left-0 w-full h-0.5"
                 style={{
                   background: `linear-gradient(90deg, transparent, ${isMyTurn ? 'var(--accent-cyan)' : 'var(--text-dim)'}, transparent)`,
                   opacity: isMyTurn ? 1 : 0.3,

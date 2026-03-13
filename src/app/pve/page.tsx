@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { generateSecret, getFeedback } from '@/lib/gameLogic';
+import { useGameStore } from '@/store/gameStore';
 import InputKeypad from '@/components/InputKeypad';
 import GuessHistory from '@/components/GuessHistory';
 import WinScreen from '@/components/WinScreen';
@@ -16,24 +18,40 @@ interface PveGuess {
 
 export default function PvePage() {
   const router = useRouter();
-  const [secret, setSecret] = useState<string | null>(null);
+  const { status } = useSession();
+  const { guestAlias } = useGameStore();
+  const [secret, setSecret] = useState<string>(() => generateSecret());
   const [history, setHistory] = useState<PveGuess[]>([]);
   const [gameOver, setGameOver] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    setSecret(generateSecret());
-  }, []);
+  const [resultSubmitted, setResultSubmitted] = useState(false);
 
   const handleGuess = (guess: string) => {
     if (!secret || gameOver) return;
     const { exact, numbers } = getFeedback(guess, secret);
     const entry: PveGuess = { guess, exact, numbers };
-    setHistory(prev => [...prev, entry]);
+    const nextHistory = [...history, entry];
+    setHistory(nextHistory);
 
     if (exact === 4) {
       setGameOver(true);
+      if (!resultSubmitted) {
+        setResultSubmitted(true);
+        void fetch('/api/leaderboard', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(status !== 'authenticated' ? { 'x-cc-guest-alias': guestAlias } : {}),
+          },
+          body: JSON.stringify({
+            mode: 'pve',
+            result: 'win',
+            guesses_taken: nextHistory.length,
+          }),
+        }).catch(() => {
+          // Ignore transient network/database errors during result reporting.
+        });
+      }
     }
   };
 
@@ -41,9 +59,8 @@ export default function PvePage() {
     setSecret(generateSecret());
     setHistory([]);
     setGameOver(false);
+    setResultSubmitted(false);
   };
-
-  if (!mounted) return null;
 
   return (
     <>
@@ -144,7 +161,7 @@ export default function PvePage() {
             <div className="w-full md:w-[45%] flex flex-col justify-center">
               <div className="glass-panel p-6 relative overflow-hidden">
                 <div
-                  className="absolute top-0 left-0 w-full h-[2px]"
+                  className="absolute top-0 left-0 w-full h-0.5"
                   style={{ background: 'linear-gradient(90deg, transparent, var(--accent-green), transparent)' }}
                 />
                 <p

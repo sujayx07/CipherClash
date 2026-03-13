@@ -1,13 +1,24 @@
 import { NextResponse } from 'next/server';
+import { cookies, headers } from 'next/headers';
+import { buildGuestCookie, createGuestAlias, GUEST_COOKIE_NAME, sanitizeAlias, verifySignedAlias } from '@/lib/identity';
 
 export async function POST() {
-  // Generate guest alias
-  const hex = Math.random().toString(16).slice(2, 6).toUpperCase();
-  const alias = `phantom_0x${hex}`;
-  
-  return NextResponse.json({ alias });
+  const cookieStore = await cookies();
+  const headerStore = await headers();
+  const existingAlias = verifySignedAlias(cookieStore.get(GUEST_COOKIE_NAME)?.value);
+  const headerAlias = headerStore.get('x-cc-guest-alias');
+  const alias = existingAlias || (headerAlias ? sanitizeAlias(headerAlias) : createGuestAlias());
+
+  const response = NextResponse.json({ alias });
+  if (!existingAlias) {
+    response.cookies.set(buildGuestCookie(alias));
+  }
+
+  return response;
 }
 
 export async function GET() {
-  return NextResponse.json({ status: 'ok' });
+  const cookieStore = await cookies();
+  const alias = verifySignedAlias(cookieStore.get(GUEST_COOKIE_NAME)?.value);
+  return NextResponse.json({ status: 'ok', alias });
 }

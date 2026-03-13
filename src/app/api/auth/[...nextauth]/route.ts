@@ -1,31 +1,6 @@
 import NextAuth from 'next-auth';
-import GoogleProvider from 'next-auth/providers/google';
-import GitHubProvider from 'next-auth/providers/github';
+import { authOptions } from '@/lib/auth';
 
-const handler = NextAuth({
-  providers: [
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-      ? [GoogleProvider({
-          clientId: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        })]
-      : []),
-    ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET
-      ? [GitHubProvider({
-          clientId: process.env.GITHUB_ID,
-          clientSecret: process.env.GITHUB_SECRET,
-        })]
-      : []),
-  ],
-  secret: process.env.NEXTAUTH_SECRET,
-  pages: {
-    signIn: '/',
-  },
-  callbacks: {
-    async session({ session }) {
-      return session;
-    },
-  },
-});
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

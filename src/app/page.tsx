@@ -3,32 +3,23 @@
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
+import { signIn, signOut, useSession } from 'next-auth/react';
 import { useGameStore } from '@/store/gameStore';
 import HowToPlayDemo from '@/components/HowToPlayDemo';
 
 export default function LandingPage() {
   const router = useRouter();
   const { guestAlias, isLoggedIn, userName, setUser } = useGameStore();
-  const [mounted, setMounted] = useState(false);
+  const { data: session, status } = useSession();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [nameInput, setNameInput] = useState('');
-
-  useEffect(() => setMounted(true), []);
-
-  const handleLogin = useCallback(() => {
-    if (nameInput.trim().length >= 2) {
-      setUser(nameInput.trim());
-      localStorage.setItem('cc_user_name', nameInput.trim());
-      setShowAuthModal(false);
-    }
-  }, [nameInput, setUser]);
 
   const handleLogout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('cc_user_name');
+    void signOut({ callbackUrl: '/' });
   }, [setUser]);
 
-  // Persist login
+  // Persist legacy local alias login if present.
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedName = localStorage.getItem('cc_user_name');
@@ -36,9 +27,48 @@ export default function LandingPage() {
     }
   }, [setUser]);
 
-  if (!mounted) return null;
+  // Keep store auth state aligned with NextAuth session.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    const name = session.user?.name?.trim();
+    if (name) {
+      setUser(name);
+    }
+  }, [session, setUser, status]);
 
-  const displayName = isLoggedIn ? userName : guestAlias;
+  // Merge guest progress into authenticated account once session is active.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    void fetch('/api/session/upgrade', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }).catch(() => {
+      // Silent fail keeps gameplay available even if DB is unavailable.
+    });
+  }, [status]);
+
+  // Ensure server-side signed guest cookie is initialized for guest sessions.
+  useEffect(() => {
+    if (status === 'authenticated') return;
+    void fetch('/api/session', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'x-cc-guest-alias': guestAlias,
+      },
+    }).catch(() => {
+      // Guest mode should still work even if cookie setup fails.
+    });
+  }, [guestAlias, status]);
+
+  if (typeof window === 'undefined') return null;
+
+  const sessionName = session?.user?.name?.trim();
+  const displayName = sessionName || (isLoggedIn ? userName : guestAlias);
+  const authenticated = status === 'authenticated';
 
   return (
     <main
@@ -62,9 +92,9 @@ export default function LandingPage() {
             className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => router.push('/profile')}
           >
-            <div className="w-2 h-2 rounded-full" style={{ background: isLoggedIn ? 'var(--accent-green)' : 'var(--accent-yellow)' }} />
-            <span className="text-xs" style={{ fontFamily: 'var(--font-display)', color: isLoggedIn ? 'var(--accent-green)' : 'var(--accent-yellow)' }}>
-              {isLoggedIn ? displayName : `Ghost: ${displayName}`}
+            <div className="w-2 h-2 rounded-full" style={{ background: authenticated ? 'var(--accent-green)' : 'var(--accent-yellow)' }} />
+            <span className="text-xs" style={{ fontFamily: 'var(--font-display)', color: authenticated ? 'var(--accent-green)' : 'var(--accent-yellow)' }}>
+              {authenticated ? displayName : `Ghost: ${displayName}`}
             </span>
           </div>
           <button
@@ -74,7 +104,7 @@ export default function LandingPage() {
           >
             MARKET
           </button>
-          {isLoggedIn ? (
+          {authenticated || isLoggedIn ? (
             <button
               onClick={handleLogout}
               className="text-xs px-3 py-1 rounded-lg hover:bg-white/5 transition-all"
@@ -113,33 +143,27 @@ export default function LandingPage() {
               className="text-xl font-black mb-6 text-center"
               style={{ fontFamily: 'var(--font-display)', color: 'var(--accent-cyan)' }}
             >
-              IDENTIFY YOURSELF
+              CONNECT YOUR ACCOUNT
             </h3>
 
-            <input
-              type="text"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder="Enter your alias..."
-              maxLength={20}
-              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-              className="w-full text-center text-lg py-3 rounded-lg mb-4 outline-none"
-              style={{
-                fontFamily: 'var(--font-display)',
-                background: 'rgba(0,245,255,0.05)',
-                border: '1px solid rgba(0,245,255,0.2)',
-                color: 'var(--accent-cyan)',
-                caretColor: 'var(--accent-cyan)',
-              }}
-            />
-
             <button
-              onClick={handleLogin}
-              disabled={nameInput.trim().length < 2}
-              className="btn-neon w-full text-sm disabled:opacity-30"
+              onClick={() => {
+                void signIn('github');
+              }}
+              className="btn-neon w-full text-sm mb-3"
               style={{ fontFamily: 'var(--font-display)' }}
             >
-              CONFIRM
+              GITHUB LOGIN
+            </button>
+
+            <button
+              onClick={() => {
+                void signIn('google');
+              }}
+              className="btn-neon w-full text-sm"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              GOOGLE LOGIN
             </button>
 
             <p

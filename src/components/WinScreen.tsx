@@ -11,9 +11,18 @@ const letters = 'SYSTEM BREACHED'.split('');
 
 export default function WinScreen({ guessCount, onContinue }: WinScreenProps) {
   const [showParticles, setShowParticles] = useState(false);
+  const [particles, setParticles] = useState<Array<{ left: string; top: string }>>([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowParticles(true), 800);
+    const timer = setTimeout(() => {
+      setParticles(
+        Array.from({ length: 20 }).map(() => ({
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+        })),
+      );
+      setShowParticles(true);
+    }, 800);
     return () => clearTimeout(timer);
   }, []);
 
@@ -25,13 +34,13 @@ export default function WinScreen({ guessCount, onContinue }: WinScreenProps) {
         {/* Particle burst */}
         {showParticles && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {Array.from({ length: 20 }).map((_, i) => (
+            {particles.map((particle, i) => (
               <div
                 key={i}
                 className="absolute w-2 h-2 rounded-full"
                 style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
+                  left: particle.left,
+                  top: particle.top,
                   background: i % 3 === 0 ? 'var(--accent-green)' : i % 3 === 1 ? 'var(--accent-cyan)' : 'var(--accent-yellow)',
                   boxShadow: `0 0 10px currentColor`,
                 }}

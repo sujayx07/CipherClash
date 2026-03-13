@@ -1,5 +1,4 @@
 // src/lib/socketServer.js — ALL Socket.io server logic for CipherClash
-const crypto = require('crypto');
 
 // In-memory room storage
 const rooms = new Map();
